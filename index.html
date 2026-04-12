@@ -158,10 +158,24 @@
         content: 'Die Mauern schweigen – doch nicht alles ist still.\nZwischen den Stimmen liegt der Weg verborgen.\nNur wer zuhört, wird ihn erkennen.\n\nhttps://www.youtube.com/watch?v=55e9OydtJFI'
       },
 
-      '/levels/.level2/level3/level4': { type: 'dir', children: ['final.txt'] },
+      '/levels/.level2/level3/level4': { type: 'dir', children: ['final.txt', 'level5'] },
       '/levels/.level2/level3/level4/final.txt': {
         type: 'file',
-        content: 'Demo Ende. Doch wer den Weg nur fremdem Geist entriss, der trat nicht tiefer – er begehrte nur, gesehen zu werden.'
+        content: 'Demo Ende. Doch wer den Weg nur fremdem Geist entriss, der trat nicht tiefer – er begehrte nur, gesehen zu werden. Ich danke euch :>'
+      },
+
+      '/levels/.level2/level3/level4/level5': { type: 'dir', children: ['asche.txt', 'stimme.txt', 'spiegel.txt'] },
+      '/levels/.level2/level3/level4/level5/asche.txt': {
+        type: 'file',
+        content: 'Was verbrannt ist, trägt keine Zahl mehr. In der Asche liegt nur das, was andere hineinsehen wollen.'
+      },
+      '/levels/.level2/level3/level4/level5/stimme.txt': {
+        type: 'file',
+        content: 'Nicht jede Stimme führt. Manche wollen nur geprüft wissen, wer blind dem Flüstern folgt.'
+      },
+      '/levels/.level2/level3/level4/level5/spiegel.txt': {
+        type: 'file',
+        content: 'Der Spiegel zeigt nicht den Weg, sondern den, der zu schnell glaubt, ihn schon gefunden zu haben.'
       }
     };
 
@@ -358,6 +372,14 @@
         if (answer === '00100101') {
           state.cwd = '/levels/.level2/level3/level4';
           print('Demo Ende. Doch wer den Weg nur fremdem Geist entriss, der trat nicht tiefer – er begehrte nur, gesehen zu werden. Ich danke euch :>');
+        } else {
+          print('Das Tor bleibt verschlossen.');
+        }
+      } else if (state.gate === 'level5') {
+        if (answer === 'sub7') {
+          state.cwd = '/levels/.level2/level3/level4/level5';
+          print('Du bist bis hierhin gekommen.');
+          print('Nenne mir persönlich das Passwort.');
           state.demoEnded = true;
         } else {
           print('Das Tor bleibt verschlossen.');
@@ -432,21 +454,29 @@
             break;
           }
 
-          if (args[0] === 'level3' && state.cwd === '/levels/.level2') {
+          const target = normalizePath(args[0]);
+
+          if (target === '/levels/.level2/level3' && state.cwd !== '/levels/.level2/level3') {
             print('Das Tor verlangt deine Zahl:');
             state.gate = 'level3';
-            state.gatePrompt = 'eingabe>';
+            state.gatePrompt = 'zahl-eingabe>';
             break;
           }
 
-          if (args[0] === 'level4' && state.cwd === '/levels/.level2/level3') {
+          if (target === '/levels/.level2/level3/level4' && state.cwd !== '/levels/.level2/level3/level4') {
             print('Das Tor verlangt Licht und Schatten:');
             state.gate = 'level4';
-            state.gatePrompt = 'eingabe>';
+            state.gatePrompt = 'binär-eingabe>';
             break;
           }
 
-          const target = normalizePath(args[0]);
+          if (target === '/levels/.level2/level3/level4/level5' && state.cwd !== '/levels/.level2/level3/level4/level5') {
+            print('Das Tor verlangt den Namen, der keiner der Wege war:');
+            state.gate = 'level5';
+            state.gatePrompt = 'letzte-eingabe>';
+            break;
+          }
+
           if (!isDir(target)) {
             print('Dieser Pfad existiert nicht.');
             break;
