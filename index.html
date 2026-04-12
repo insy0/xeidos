@@ -1,24 +1,280 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-<meta charset="UTF-8">
-<style>
-body {
-  margin: 0;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: black;
-  color: white;
-  font-size: 120px;
-letter-spacing: 5px;
-  text-shadow: 0 0 10px white;
-  font-family: monospace;
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>xeidos</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --fg: #ffffff;
+      --muted: #9a9a9a;
+      --glow: 0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
+      overflow: hidden;
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    #landing,
+    #game {
+      width: 100%;
+      height: 100%;
+    }
+
+    #landing {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+
+    #enter-btn {
+      border: none;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      font-size: clamp(60px, 9vw, 120px);
+      line-height: 1;
+      padding: 0;
+      text-shadow: var(--glow);
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    #enter-btn:hover,
+    #enter-btn:focus-visible {
+      transform: scale(1.04);
+      outline: none;
+      opacity: 0.95;
+    }
+
+    #game {
+      display: none;
+      padding: 18px;
+    }
+
+    #terminal {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .line {
+      margin: 0 0 4px 0;
+      min-height: 1em;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .prompt-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .prompt {
+      flex: 0 0 auto;
+    }
+
+    .input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: #fff;
+      caret-color: #fff;
+      padding: 0;
+    }
+  </style>
 </head>
 <body>
-:>
+  <section id="landing" aria-label="Startseite">
+    <button id="enter-btn" aria-label="Spiel starten">:&gt;</button>
+  </section>
+
+  <section id="game" aria-label="Terminal-Demo">
+    <div id="terminal"></div>
+  </section>
+
+  <script>
+    const landing = document.getElementById('landing');
+    const game = document.getElementById('game');
+    const enterBtn = document.getElementById('enter-btn');
+    const terminal = document.getElementById('terminal');
+
+    const state = {
+      user: 'player1',
+      cwd: '/home/player1',
+      history: [],
+      historyIndex: 0,
+      started: false
+    };
+
+    function print(text = '', className = '') {
+      const line = document.createElement('div');
+      line.className = `line ${className}`.trim();
+      line.textContent = text;
+      terminal.appendChild(line);
+      scrollToBottom();
+    }
+
+    function printLines(text) {
+      String(text).split('\n').forEach((line) => print(line));
+    }
+
+    function scrollToBottom() {
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function promptText() {
+      return `${state.user}@xeidos:${state.cwd}$`;
+    }
+
+    function focusInput() {
+      const input = terminal.querySelector('.input');
+      if (input) input.focus();
+    }
+
+    function addPrompt() {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'prompt-line';
+
+      const prompt = document.createElement('span');
+      prompt.className = 'prompt';
+      prompt.textContent = promptText();
+
+      const input = document.createElement('input');
+      input.className = 'input';
+      input.type = 'text';
+      input.autocomplete = 'off';
+      input.autocorrect = 'off';
+      input.autocapitalize = 'off';
+      input.spellcheck = false;
+
+      wrapper.appendChild(prompt);
+      wrapper.appendChild(input);
+      terminal.appendChild(wrapper);
+      input.focus();
+      scrollToBottom();
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          const value = input.value;
+          wrapper.remove();
+          print(`${promptText()} ${value}`);
+          runCommand(value);
+          addPrompt();
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (!state.history.length) return;
+          state.historyIndex = Math.max(0, state.historyIndex - 1);
+          input.value = state.history[state.historyIndex] || '';
+          input.setSelectionRange(input.value.length, input.value.length);
+        } else if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          if (!state.history.length) return;
+          state.historyIndex = Math.min(state.history.length, state.historyIndex + 1);
+          input.value = state.history[state.historyIndex] || '';
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      });
+    }
+
+    function runCommand(raw) {
+      const trimmed = raw.trim();
+      if (trimmed) {
+        if (state.history[state.history.length - 1] !== trimmed) {
+          state.history.push(trimmed);
+        }
+        state.historyIndex = state.history.length;
+      }
+
+      if (!trimmed) return;
+
+      const [cmd, ...args] = trimmed.split(/\s+/);
+
+      switch (cmd) {
+        case 'help':
+          print('Befehle: help, ls, cd, cat, pwd, clear, id');
+          break;
+        case 'ls':
+          if (state.cwd === '/home/player1') {
+            print('start.txt');
+          } else {
+            print('');
+          }
+          break;
+        case 'pwd':
+          print(state.cwd);
+          break;
+        case 'id':
+          print('uid=1001(player1) gid=1001(player1) groups=1001(player1)');
+          break;
+        case 'cat':
+          if (args[0] === 'start.txt' && state.cwd === '/home/player1') {
+            print('Du bist nicht am richtigen Ort.');
+          } else {
+            print('Diese Datei existiert nicht.');
+          }
+          break;
+        case 'cd':
+          if (args[0] === '/levels' || args[0] === '..') {
+            state.cwd = '/levels';
+          } else if (!args[0]) {
+            state.cwd = '/home/player1';
+          } else {
+            print('Dieser Pfad existiert nicht.');
+          }
+          break;
+        case 'clear':
+          terminal.innerHTML = '';
+          break;
+        default:
+          print('Noch nicht.');
+      }
+    }
+
+    function startDemo() {
+      if (state.started) return;
+      state.started = true;
+      landing.style.display = 'none';
+      game.style.display = 'block';
+
+      print('Lasst, die ihr eintretet, alle Hoffnung fahren');
+      print('Verfügbare Befehle sind begrenzt.');
+      print('Beginne mit: ls');
+      print('');
+      addPrompt();
+    }
+
+    enterBtn.addEventListener('click', startDemo);
+    window.addEventListener('click', focusInput);
+    window.addEventListener('keydown', (event) => {
+      if (!state.started && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        startDemo();
+      }
+    });
+  </script>
 </body>
 </html>
