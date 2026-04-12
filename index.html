@@ -459,14 +459,14 @@
           if (target === '/levels/.level2/level3' && state.cwd !== '/levels/.level2/level3') {
             print('Das Tor verlangt deine Zahl:');
             state.gate = 'level3';
-            state.gatePrompt = 'zahl-eingabe>';
+            state.gatePrompt = 'eingabe>';
             break;
           }
 
           if (target === '/levels/.level2/level3/level4' && state.cwd !== '/levels/.level2/level3/level4') {
             print('Das Tor verlangt Licht und Schatten:');
             state.gate = 'level4';
-            state.gatePrompt = 'binär-eingabe>';
+            state.gatePrompt = 'eingabe>';
             break;
           }
 
