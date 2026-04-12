@@ -8,7 +8,6 @@
     :root {
       --bg: #000000;
       --fg: #ffffff;
-      --muted: #9a9a9a;
       --glow: 0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.35);
     }
 
@@ -80,10 +79,6 @@
       min-height: 1em;
     }
 
-    .muted {
-      color: var(--muted);
-    }
-
     .prompt-line {
       display: flex;
       align-items: center;
@@ -126,7 +121,10 @@
       '/': { type: 'dir', children: ['home', 'levels'] },
       '/home': { type: 'dir', children: ['player1'] },
       '/home/player1': { type: 'dir', children: ['start.txt'] },
-      '/home/player1/start.txt': { type: 'file', content: 'Du bist nicht am richtigen Ort.' },
+      '/home/player1/start.txt': {
+        type: 'file',
+        content: 'Du bist nicht am richtigen Ort.'
+      },
 
       '/levels': { type: 'dir', children: ['level1', '.level2'] },
       '/levels/level1': { type: 'dir', children: ['stille.txt', 'schatten.txt', 'tor.txt'] },
@@ -144,28 +142,46 @@
         content: 'Am Rand des Limbus endet der erste Blick.'
       },
 
-      '/levels/.level2': { type: 'dir', children: ['stimme.txt', 'fragment.txt'] },
+      '/levels/.level2': { type: 'dir', children: ['stimme.txt', 'fragment.txt', 'level3'] },
       '/levels/.level2/stimme.txt': {
         type: 'file',
         content: 'Namen sind Schall und Rauch, doch jeder trägt eine Zahl.'
       },
       '/levels/.level2/fragment.txt': {
         type: 'file',
-        content: 'Du glaubst dich zu kennen? Doch die da oben kennt dich besser.'
+        content: 'Du glaubst dich zu kennen? Doch die da Oben kennt dich besser.'
+      },
+
+      '/levels/.level2/level3': { type: 'dir', children: ['echo.txt', 'level4'] },
+      '/levels/.level2/level3/echo.txt': {
+        type: 'file',
+        content: 'Die Mauern schweigen – doch nicht alles ist still.\nZwischen den Stimmen liegt der Weg verborgen.\nNur wer zuhört, wird ihn erkennen.\n\nhttps://www.youtube.com/watch?v=55e9OydtJFI'
+      },
+
+      '/levels/.level2/level3/level4': { type: 'dir', children: ['final.txt'] },
+      '/levels/.level2/level3/level4/final.txt': {
+        type: 'file',
+        content: 'Demo Ende - ich danke euch :>'
       }
     };
 
+    const COMMANDS = ['help', 'ls', 'cd', 'cat', 'pwd', 'clear', 'id', 'ip'];
+
     const state = {
       user: 'player1',
+      uid: 1001,
+      gid: 1001,
       cwd: '/home/player1',
       history: [],
       historyIndex: 0,
-      started: false
+      started: false,
+      gate: null,
+      demoEnded: false
     };
 
     function print(text = '', className = '') {
       const line = document.createElement('div');
-      line.className = `line ${className}`.trim();
+      line.className = ('line ' + className).trim();
       line.textContent = text;
       terminal.appendChild(line);
       scrollToBottom();
@@ -180,7 +196,7 @@
     }
 
     function promptText() {
-      return `${state.user}@xeidos:${state.cwd}$`;
+      return state.user + '@xeidos:' + state.cwd + '$';
     }
 
     function focusInput() {
@@ -203,7 +219,7 @@
     function normalizePath(inputPath, basePath = state.cwd) {
       if (!inputPath || inputPath.trim() === '') return basePath;
 
-      const rawPath = inputPath.startsWith('/') ? inputPath : `${basePath}/${inputPath}`;
+      const rawPath = inputPath.startsWith('/') ? inputPath : basePath + '/' + inputPath;
       const parts = rawPath.split('/');
       const stack = [];
 
@@ -216,7 +232,7 @@
         stack.push(part);
       }
 
-      return `/${stack.join('/')}`;
+      return '/' + stack.join('/');
     }
 
     function getChildren(path, showHidden = false) {
@@ -224,7 +240,46 @@
       return fs[path].children.filter((name) => showHidden || !name.startsWith('.'));
     }
 
+    function getSuggestions() {
+      const suggestions = [...COMMANDS];
+      if (isDir(state.cwd)) {
+        suggestions.push(...fs[state.cwd].children);
+      }
+      return [...new Set(suggestions)];
+    }
+
+    function autocompleteInput(input) {
+      const value = input.value;
+      const parts = value.split(/\s+/);
+      const lastPart = parts[parts.length - 1] || '';
+
+      if (parts.length === 1 && !value.endsWith(' ')) {
+        const matches = COMMANDS.filter((entry) => entry.startsWith(parts[0]));
+        if (matches.length === 1) {
+          input.value = matches[0] + ' ';
+        } else if (matches.length > 1) {
+          print(matches.join('  '));
+        }
+        return;
+      }
+
+      const command = parts[0];
+      if (!['cat', 'cd', 'ls', 'ip'].includes(command)) {
+        return;
+      }
+
+      const matches = getSuggestions().filter((entry) => entry.startsWith(lastPart));
+      if (matches.length === 1) {
+        parts[parts.length - 1] = matches[0];
+        input.value = parts.join(' ') + ' ';
+      } else if (matches.length > 1) {
+        print(matches.join('  '));
+      }
+    }
+
     function addPrompt() {
+      if (state.demoEnded) return;
+
       const wrapper = document.createElement('div');
       wrapper.className = 'prompt-line';
 
@@ -250,9 +305,9 @@
         if (event.key === 'Enter') {
           const value = input.value;
           wrapper.remove();
-          print(`${promptText()} ${value}`);
+          print(promptText() + ' ' + value);
           runCommand(value);
-          addPrompt();
+          if (!state.demoEnded) addPrompt();
         } else if (event.key === 'ArrowUp') {
           event.preventDefault();
           if (!state.history.length) return;
@@ -265,8 +320,47 @@
           state.historyIndex = Math.min(state.history.length, state.historyIndex + 1);
           input.value = state.history[state.historyIndex] || '';
           input.setSelectionRange(input.value.length, input.value.length);
+        } else if (event.key === 'Tab') {
+          event.preventDefault();
+          autocompleteInput(input);
         }
       });
+    }
+
+    function readFiles(args) {
+      if (!args.length) {
+        print('Was willst du lesen?');
+        return;
+      }
+
+      for (const name of args) {
+        const target = normalizePath(name);
+        if (!isFile(target)) {
+          print(name + ': Diese Datei existiert nicht.');
+          continue;
+        }
+        printLines(fs[target].content);
+      }
+    }
+
+    function handleGateAnswer(answer) {
+      if (state.gate === 'level3') {
+        if (answer === String(state.uid)) {
+          state.cwd = '/levels/.level2/level3';
+        } else {
+          print('Das Tor bleibt verschlossen.');
+        }
+      } else if (state.gate === 'level4') {
+        if (answer === '00100101') {
+          state.cwd = '/levels/.level2/level3/level4';
+          print('Demo Ende - ich danke euch :>');
+          state.demoEnded = true;
+        } else {
+          print('Das Tor bleibt verschlossen.');
+        }
+      }
+
+      state.gate = null;
     }
 
     function runCommand(raw) {
@@ -280,86 +374,100 @@
 
       if (!trimmed) return;
 
-      const [cmd, ...args] = trimmed.split(/\s+/);
+      if (state.gate) {
+        handleGateAnswer(trimmed);
+        return;
+      }
+
+      const parts = trimmed.split(/\s+/);
+      const cmd = parts[0];
+      const args = parts.slice(1);
 
       switch (cmd) {
         case 'help':
-          print('Befehle: help, ls, cd, cat, pwd, clear, id');
+          print('Befehle: help, ls, cd, cat, pwd, clear, id, ip');
           break;
-        case 'ls':
-          cmdLs(args);
+
+        case 'ls': {
+          let showHidden = false;
+          let target = state.cwd;
+
+          for (const arg of args) {
+            if (arg === '-a') {
+              showHidden = true;
+            } else {
+              target = normalizePath(arg);
+            }
+          }
+
+          if (!isDir(target)) {
+            print('Kein gültiger Ort.');
+            break;
+          }
+
+          print(getChildren(target, showHidden).join('  '));
           break;
+        }
+
         case 'pwd':
           print(state.cwd);
           break;
+
         case 'id':
-          print('uid=1001(player1) gid=1001(player1) groups=1001(player1)');
+          print('uid=' + state.uid + '(' + state.user + ') gid=' + state.gid + '(' + state.user + ') groups=' + state.gid + '(' + state.user + ')');
           break;
+
         case 'cat':
-          cmdCat(args);
+          readFiles(args);
           break;
-        case 'cd':
-          cmdCd(args);
+
+        case 'cd': {
+          if (!args[0]) {
+            state.cwd = '/home/player1';
+            break;
+          }
+
+          if (args[0] === 'level3' && state.cwd === '/levels/.level2') {
+            print('Das Tor verlangt deine Zahl:');
+            state.gate = 'level3';
+            break;
+          }
+
+          if (args[0] === 'level4' && state.cwd === '/levels/.level2/level3') {
+            print('Das Tor verlangt Licht und Schatten:');
+            state.gate = 'level4';
+            break;
+          }
+
+          const target = normalizePath(args[0]);
+          if (!isDir(target)) {
+            print('Dieser Pfad existiert nicht.');
+            break;
+          }
+
+          state.cwd = target;
           break;
+        }
+
         case 'clear':
           terminal.innerHTML = '';
           break;
+
+        case 'ip':
+          if (args.length === 1 && args[0] === 'route') {
+            print('default via 10.13.37.1 dev eth0 proto static');
+            print('10.13.37.0/24 dev eth0 proto kernel scope link src 10.13.37.41');
+            print('172.18.0.0/16 dev eth1 proto kernel scope link src 172.18.0.2');
+            print('192.168.56.0/24 dev eth2 proto kernel scope link src 192.168.56.1');
+            print('10.0.2.0/24 dev eth3 proto kernel scope link src 10.0.2.15');
+          } else {
+            print('Nur der Weg ist hier von Bedeutung.');
+          }
+          break;
+
         default:
           print('Noch nicht.');
       }
-    }
-
-    function cmdLs(args) {
-      let showHidden = false;
-      let target = state.cwd;
-
-      for (const arg of args) {
-        if (arg === '-a') {
-          showHidden = true;
-        } else {
-          target = normalizePath(arg);
-        }
-      }
-
-      if (!isDir(target)) {
-        print('Kein gültiger Ort.');
-        return;
-      }
-
-      const children = getChildren(target, showHidden);
-      print(children.join('  '));
-    }
-
-    function cmdCat(args) {
-      if (!args[0]) {
-        print('Was willst du lesen?');
-        return;
-      }
-
-      const target = normalizePath(args[0]);
-
-      if (!isFile(target)) {
-        print('Diese Datei existiert nicht.');
-        return;
-      }
-
-      printLines(fs[target].content);
-    }
-
-    function cmdCd(args) {
-      if (!args[0]) {
-        state.cwd = '/home/player1';
-        return;
-      }
-
-      const target = normalizePath(args[0]);
-
-      if (!isDir(target)) {
-        print('Dieser Pfad existiert nicht.');
-        return;
-      }
-
-      state.cwd = target;
     }
 
     function startDemo() {
