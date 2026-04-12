@@ -161,7 +161,7 @@
       '/levels/.level2/level3/level4': { type: 'dir', children: ['final.txt'] },
       '/levels/.level2/level3/level4/final.txt': {
         type: 'file',
-        content: 'Demo Ende - ich danke euch :>'
+        content: 'Demo Ende. Doch wer den Weg nur fremdem Geist entriss, der trat nicht tiefer – er begehrte nur, gesehen zu werden.'
       }
     };
 
@@ -176,6 +176,7 @@
       historyIndex: 0,
       started: false,
       gate: null,
+      gatePrompt: null,
       demoEnded: false
     };
 
@@ -196,6 +197,9 @@
     }
 
     function promptText() {
+      if (state.gatePrompt) {
+        return state.gatePrompt;
+      }
       return state.user + '@xeidos:' + state.cwd + '$';
     }
 
@@ -353,7 +357,7 @@
       } else if (state.gate === 'level4') {
         if (answer === '00100101') {
           state.cwd = '/levels/.level2/level3/level4';
-          print('Demo Ende - ich danke euch :>');
+          print('Demo Ende. Doch wer den Weg nur fremdem Geist entriss, der trat nicht tiefer – er begehrte nur, gesehen zu werden.');
           state.demoEnded = true;
         } else {
           print('Das Tor bleibt verschlossen.');
@@ -361,6 +365,7 @@
       }
 
       state.gate = null;
+      state.gatePrompt = null;
     }
 
     function runCommand(raw) {
@@ -430,12 +435,14 @@
           if (args[0] === 'level3' && state.cwd === '/levels/.level2') {
             print('Das Tor verlangt deine Zahl:');
             state.gate = 'level3';
+            state.gatePrompt = 'zahl-eingabe>';
             break;
           }
 
           if (args[0] === 'level4' && state.cwd === '/levels/.level2/level3') {
             print('Das Tor verlangt Licht und Schatten:');
             state.gate = 'level4';
+            state.gatePrompt = 'binär-eingabe>';
             break;
           }
 
