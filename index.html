@@ -122,6 +122,39 @@
     const enterBtn = document.getElementById('enter-btn');
     const terminal = document.getElementById('terminal');
 
+    const fs = {
+      '/': { type: 'dir', children: ['home', 'levels'] },
+      '/home': { type: 'dir', children: ['player1'] },
+      '/home/player1': { type: 'dir', children: ['start.txt'] },
+      '/home/player1/start.txt': { type: 'file', content: 'Du bist nicht am richtigen Ort.' },
+
+      '/levels': { type: 'dir', children: ['level1', '.level2'] },
+      '/levels/level1': { type: 'dir', children: ['stille.txt', 'schatten.txt', 'tor.txt'] },
+
+      '/levels/level1/stille.txt': {
+        type: 'file',
+        content: 'Im Limbus sind nicht alle Seelen sichtbar.\nManches entzieht sich deinem ersten Blick.'
+      },
+      '/levels/level1/schatten.txt': {
+        type: 'file',
+        content: 'Die Schatten sprechen, doch sie führen nicht.'
+      },
+      '/levels/level1/tor.txt': {
+        type: 'file',
+        content: 'Am Rand des Limbus endet der erste Blick.'
+      },
+
+      '/levels/.level2': { type: 'dir', children: ['stimme.txt', 'fragment.txt'] },
+      '/levels/.level2/stimme.txt': {
+        type: 'file',
+        content: 'Namen sind Schall und Rauch, doch jeder trägt eine Zahl.'
+      },
+      '/levels/.level2/fragment.txt': {
+        type: 'file',
+        content: 'Du glaubst dich zu kennen? Doch die da oben kennt dich besser.'
+      }
+    };
+
     const state = {
       user: 'player1',
       cwd: '/home/player1',
@@ -153,6 +186,42 @@
     function focusInput() {
       const input = terminal.querySelector('.input');
       if (input) input.focus();
+    }
+
+    function exists(path) {
+      return Object.prototype.hasOwnProperty.call(fs, path);
+    }
+
+    function isDir(path) {
+      return exists(path) && fs[path].type === 'dir';
+    }
+
+    function isFile(path) {
+      return exists(path) && fs[path].type === 'file';
+    }
+
+    function normalizePath(inputPath, basePath = state.cwd) {
+      if (!inputPath || inputPath.trim() === '') return basePath;
+
+      const rawPath = inputPath.startsWith('/') ? inputPath : `${basePath}/${inputPath}`;
+      const parts = rawPath.split('/');
+      const stack = [];
+
+      for (const part of parts) {
+        if (!part || part === '.') continue;
+        if (part === '..') {
+          if (stack.length > 0) stack.pop();
+          continue;
+        }
+        stack.push(part);
+      }
+
+      return `/${stack.join('/')}`;
+    }
+
+    function getChildren(path, showHidden = false) {
+      if (!isDir(path)) return [];
+      return fs[path].children.filter((name) => showHidden || !name.startsWith('.'));
     }
 
     function addPrompt() {
@@ -218,11 +287,7 @@
           print('Befehle: help, ls, cd, cat, pwd, clear, id');
           break;
         case 'ls':
-          if (state.cwd === '/home/player1') {
-            print('start.txt');
-          } else {
-            print('');
-          }
+          cmdLs(args);
           break;
         case 'pwd':
           print(state.cwd);
@@ -231,20 +296,10 @@
           print('uid=1001(player1) gid=1001(player1) groups=1001(player1)');
           break;
         case 'cat':
-          if (args[0] === 'start.txt' && state.cwd === '/home/player1') {
-            print('Du bist nicht am richtigen Ort.');
-          } else {
-            print('Diese Datei existiert nicht.');
-          }
+          cmdCat(args);
           break;
         case 'cd':
-          if (args[0] === '/levels' || args[0] === '..') {
-            state.cwd = '/levels';
-          } else if (!args[0]) {
-            state.cwd = '/home/player1';
-          } else {
-            print('Dieser Pfad existiert nicht.');
-          }
+          cmdCd(args);
           break;
         case 'clear':
           terminal.innerHTML = '';
@@ -252,6 +307,59 @@
         default:
           print('Noch nicht.');
       }
+    }
+
+    function cmdLs(args) {
+      let showHidden = false;
+      let target = state.cwd;
+
+      for (const arg of args) {
+        if (arg === '-a') {
+          showHidden = true;
+        } else {
+          target = normalizePath(arg);
+        }
+      }
+
+      if (!isDir(target)) {
+        print('Kein gültiger Ort.');
+        return;
+      }
+
+      const children = getChildren(target, showHidden);
+      print(children.join('  '));
+    }
+
+    function cmdCat(args) {
+      if (!args[0]) {
+        print('Was willst du lesen?');
+        return;
+      }
+
+      const target = normalizePath(args[0]);
+
+      if (!isFile(target)) {
+        print('Diese Datei existiert nicht.');
+        return;
+      }
+
+      printLines(fs[target].content);
+    }
+
+    function cmdCd(args) {
+      if (!args[0]) {
+        state.cwd = '/home/player1';
+        return;
+      }
+
+      const target = normalizePath(args[0]);
+
+      if (!isDir(target)) {
+        print('Dieser Pfad existiert nicht.');
+        return;
+      }
+
+      state.cwd = target;
     }
 
     function startDemo() {
