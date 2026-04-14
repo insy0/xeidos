@@ -411,11 +411,21 @@ function startDemo() {
   addPrompt();
 }
 
-enterBtn.addEventListener('click', startDemo);
+function startWithEffect() {
+  if (state.started) return;
+
+  enterBtn.classList.add('clicked');
+
+  setTimeout(() => {
+    startDemo();
+  }, 220);
+}
+
+enterBtn.addEventListener('click', startWithEffect);
 window.addEventListener('click', focusInput);
 window.addEventListener('keydown', (event) => {
   if (!state.started && (event.key === 'Enter' || event.key === ' ')) {
     event.preventDefault();
-    startDemo();
+    startWithEffect();
   }
 });
