@@ -74,6 +74,18 @@
       word-break: break-word;
     }
 
+    #version {
+      position: fixed;
+      top: 12px;
+      right: 16px;
+      color: #fff;
+      font-size: 14px;
+      opacity: 0.9;
+      pointer-events: none;
+      z-index: 10;
+      text-shadow: var(--glow);
+    }
+
     .line {
       margin: 0 0 4px 0;
       min-height: 1em;
@@ -103,6 +115,8 @@
   </style>
 </head>
 <body>
+  <div id="version">v0.2</div>
+
   <section id="landing" aria-label="Startseite">
     <button id="enter-btn" aria-label="Spiel starten">:&gt;</button>
   </section>
@@ -112,10 +126,15 @@
   </section>
 
   <script>
+    const VERSION = 'v0.2';
+
     const landing = document.getElementById('landing');
     const game = document.getElementById('game');
     const enterBtn = document.getElementById('enter-btn');
     const terminal = document.getElementById('terminal');
+    const versionEl = document.getElementById('version');
+
+    versionEl.textContent = VERSION;
 
     const fs = {
       '/': { type: 'dir', children: ['home', 'levels'] },
@@ -473,7 +492,7 @@
           if (target === '/levels/.level2/level3/level4/level5' && state.cwd !== '/levels/.level2/level3/level4/level5') {
             print('Das Tor verlangt den Namen, der keiner der Wege war:');
             state.gate = 'level5';
-            state.gatePrompt = 'letzte-eingabe>';
+            state.gatePrompt = 'eingabe>';
             break;
           }
 
