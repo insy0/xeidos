@@ -39,7 +39,7 @@ input.remove();
 
 if(val==="sudo"){
 let img=document.createElement('img');
-img.src="tenor.gif";
+img.src="sudo.gif";
 img.style.width="200px";
 terminal.appendChild(img);
 }else{
