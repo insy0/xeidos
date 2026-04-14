@@ -23,39 +23,40 @@ print("Willkommen.");
 prompt();
 }
 
-function prompt(){
-let input=document.createElement('input');
-input.style.background="black";
-input.style.color="white";
-input.style.border="none";
-terminal.appendChild(input);
-input.focus();
+function prompt() {
+  const wrapper = document.createElement('div');
 
-input.addEventListener('keydown',(e)=>{
-if(e.key==="Enter"){
-let val=input.value;
-print("> "+val);
-input.remove();
+  const input = document.createElement('input');
+  input.style.background = "black";
+  input.style.color = "white";
+  input.style.border = "none";
+  input.style.outline = "none";
+  input.style.width = "300px";
 
-if(val==="sudo"){
-let img=document.createElement('img');
-img.src="sudo.gif";
-img.style.width="200px";
-terminal.appendChild(img);
-}else{
-print("Unbekannt.");
+  wrapper.appendChild(input);
+  terminal.appendChild(wrapper);
+
+  input.focus();
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === "Enter") {
+      const val = input.value;
+      wrapper.remove();
+
+      print("> " + val);
+
+      if (val === "sudo") {
+        const img = document.createElement('img');
+        img.src = "sudo.gif";
+        img.style.width = "200px";
+        img.style.display = "block";
+        img.style.marginTop = "10px";
+        terminal.appendChild(img);
+      } else {
+        print("Unbekannt.");
+      }
+
+      prompt();
+    }
+  });
 }
-
-prompt();
-}
-});
-}
-
-enterBtn.onclick=()=>{
-enterBtn.classList.add('clicked');
-setTimeout(start,200);
-};
-
-version.onclick=()=>{
-dropdown.classList.toggle('hidden');
-};
