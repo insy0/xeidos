@@ -1,9 +1,8 @@
-const VERSION = 'v0.4';
+const VERSION = 'v0.4.1';
 
 const landing = document.getElementById('landing');
 const game = document.getElementById('game');
 const enterBtn = document.getElementById('enter-btn');
-const terminal = document.getElementById('terminal');
 const versionEl = document.getElementById('version');
 const dropdownEl = document.getElementById('dropdown');
 
@@ -86,48 +85,11 @@ const state = {
   demoEnded: false
 };
 
-function print(text = '', className = '') {
-  const line = document.createElement('div');
-  line.className = ('line ' + className).trim();
-  line.textContent = text;
-  terminal.appendChild(line);
-  scrollToBottom();
-}
-
-function printHTML(html = '', className = '') {
-  const line = document.createElement('div');
-  line.className = ('line ' + className).trim();
-  line.innerHTML = html;
-  terminal.appendChild(line);
-  scrollToBottom();
-}
-
-function printLines(text) {
-  String(text).split('\n').forEach((line) => print(line));
-}
-
-function printImage(src) {
-  const img = document.createElement('img');
-  img.src = src;
-  img.className = 'terminal-image';
-  terminal.appendChild(img);
-  scrollToBottom();
-}
-
-function scrollToBottom() {
-  terminal.scrollTop = terminal.scrollHeight;
-}
-
 function promptText() {
   if (state.gatePrompt) {
     return state.gatePrompt;
   }
   return state.user + '@xeidos:' + state.cwd + '$';
-}
-
-function focusInput() {
-  const input = terminal.querySelector('.input');
-  if (input) input.focus();
 }
 
 function exists(path) {
@@ -446,6 +408,7 @@ enterBtn.addEventListener('click', startWithEffect);
 
 window.addEventListener('click', (event) => {
   if (event.target === versionEl) return;
+  if (event.target === modeBtn) return;
   if (dropdownEl.contains(event.target)) return;
   focusInput();
   if (!dropdownEl.classList.contains('hidden')) {
